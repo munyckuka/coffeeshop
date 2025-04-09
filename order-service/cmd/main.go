@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"inventory-service/delivery"
-	"inventory-service/repository"
-	"inventory-service/service"
+	"order-servive/delivery"
+	"order-servive/repository"
+	"order-servive/service"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -28,15 +28,15 @@ func main() {
 	db := client.Database("ecommerce")
 
 	// Инициализация слоёв
-	productRepo := repository.NewMongoProductRepository(db)
-	productService := service.NewProductService(productRepo)
+	orderRepo := repository.NewMongoOrderRepository(db)
+	orderService := service.NewOrderService(orderRepo)
 
 	// Настройка роутера
 	router := gin.Default()
-	delivery.NewProductHandler(router, productService)
+	delivery.NewOrderHandler(router, orderService)
 
 	// Запуск сервера
-	if err := router.Run(":8080"); err != nil {
+	if err := router.Run(":8081"); err != nil { // Порт можно поменять, если нужно
 		log.Fatal("Server error:", err)
 	}
 }
