@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"net/http"
 	"net/http/httputil"
 	"net/url"
 
@@ -9,8 +8,8 @@ import (
 )
 
 func RegisterRoutes(router *gin.Engine) {
-	inventoryURL, _ := url.Parse("http://localhost:8080")
-	orderURL, _ := url.Parse("http://localhost:8081")
+	inventoryURL, _ := url.Parse("http://inventory-service:8080")
+	orderURL, _ := url.Parse("http://order-service:8081")
 
 	inventoryProxy := httputil.NewSingleHostReverseProxy(inventoryURL)
 	orderProxy := httputil.NewSingleHostReverseProxy(orderURL)
