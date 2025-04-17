@@ -2,17 +2,19 @@ package main
 
 import (
 	"context"
+	inventorypb "inventory-service/proto"
 	"log"
-	"os"
+	"net"
 	"time"
-
-	"github.com/gin-gonic/gin"
-	"inventory-service/delivery"
-	"inventory-service/repository"
-	"inventory-service/service"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"google.golang.org/grpc"
+
+	grpcHandler "inventory-service/grpc"
+
+	"inventory-service/repository"
+	"inventory-service/service"
 )
 
 func main() {
@@ -20,24 +22,28 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	clientOptions := options.Client().ApplyURI(os.Getenv("MONGO_URI"))
+	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
-		log.Fatal("Mongo connection error:", err)
+		log.Fatalf("failed to connect to MongoDB: %v", err)
 	}
 
-	db := client.Database("ecommerce")
+	db := client.Database("inventorydb")
+	repo := repository.NewMongoProductRepository(db)
+	productService := service.NewProductService(repo)
+	handler := grpcHandler.NewInventoryGrpcHandler(productService)
 
-	// Инициализация слоёв
-	productRepo := repository.NewMongoProductRepository(db)
-	productService := service.NewProductService(productRepo)
+	// Запуск gRPC-сервера
+	lis, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
 
-	// Настройка роутера
-	router := gin.Default()
-	delivery.NewProductHandler(router, productService)
+	grpcServer := grpc.NewServer()
+	inventorypb.RegisterInventoryServiceServer(grpcServer, handler)
 
-	// Запуск сервера
-	if err := router.Run(":8080"); err != nil {
-		log.Fatal("Server error:", err)
+	log.Println("✅ Inventory gRPC server is running on port 8080...")
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
 	}
 }
